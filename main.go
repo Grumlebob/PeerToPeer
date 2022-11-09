@@ -44,7 +44,7 @@ func main() {
 	p := &peer{
 		id:             ownPort,
 		lamportTime:    lamportTime,
-		responseNeeded: 999,
+		responseNeeded: 999999,
 		clients:        make(map[int32]node.NodeClient),
 		ctx:            ctx,
 		state:          RELEASED,
@@ -85,6 +85,7 @@ func main() {
 	//We need N-1 responses to enter the critical section
 	p.responseNeeded = int32(len(p.clients))
 
+	//They all try to access the critical section after a random delay of 5 sec
 	go func() {
 		randomPause(5)
 		p.RequestEnterToCriticalSection(p.ctx, &node.Request{Id: p.id})
@@ -105,8 +106,7 @@ func (p *peer) HandlePeerRequest(ctx context.Context, req *node.Request) (*node.
 			p.responseNeeded--
 		}
 		if req.State == WANTED {
-			if req.LamportTime < p.lamportTime {
-				log.Printf("req: %v, against client %v \n", req.LamportTime, p.lamportTime)
+			if req.LamportTime > p.lamportTime {
 				p.responseNeeded--
 			} else if req.LamportTime == p.lamportTime && req.Id < p.id {
 				p.responseNeeded--
@@ -164,5 +164,6 @@ func (p *peer) sendMessageToAllPeers() {
 }
 
 func randomPause(max int) {
+	rand.Seed(time.Now().UnixNano())
 	time.Sleep(time.Millisecond * time.Duration(rand.Intn(max*1000)))
 }
