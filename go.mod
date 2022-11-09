@@ -1,4 +1,4 @@
-module github.com/NaddiNadja/peer-to-peer
+module github.com/Grumlebob/PeerToPeer
 
 go 1.19
 

@@ -9,7 +9,7 @@ import (
 	"os"
 	"strconv"
 
-	ping "github.com/NaddiNadja/peer-to-peer/grpc"
+	ping "github.com/Grumlebob/PeerToPeer/grpc"
 	"google.golang.org/grpc"
 )
 
@@ -28,7 +28,7 @@ func main() {
 	}
 
 	// Create listener tcp on port ownPort
-	list, err := net.Listen("tcp", fmt.Sprintf(":%v", ownPort))
+	list, err := net.Listen("tcp", fmt.Sprintf("localhost:%v", ownPort))
 	if err != nil {
 		log.Fatalf("Failed to listen on port: %v", err)
 	}
@@ -50,7 +50,7 @@ func main() {
 
 		var conn *grpc.ClientConn
 		fmt.Printf("Trying to dial: %v\n", port)
-		conn, err := grpc.Dial(fmt.Sprintf(":%v", port), grpc.WithInsecure(), grpc.WithBlock())
+		conn, err := grpc.Dial(fmt.Sprintf("localhost:%v", port), grpc.WithInsecure(), grpc.WithBlock())
 		if err != nil {
 			log.Fatalf("Could not connect: %s", err)
 		}
