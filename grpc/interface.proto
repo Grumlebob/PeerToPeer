@@ -4,7 +4,8 @@ package grpc;
 option go_package = "https://github.com/Grumlebob/PeerToPeer/grpc";
 
 service Node {
-    rpc ping (Request) returns (Reply) {}
+    rpc broadcast (Request) returns (Reply) {}
+    rpc criticalSection (Request) returns (Reply) {}
 }
 
 message Request {

@@ -8,9 +8,26 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"time"
 
 	ping "github.com/Grumlebob/PeerToPeer/grpc"
 	"google.golang.org/grpc"
+)
+
+type peer struct {
+	ping.UnimplementedNodeServer
+	id            int32
+	lamportTime   int32
+	amountOfPings map[int32]int32
+	clients       map[int32]ping.NodeClient
+	ctx           context.Context
+	state         string
+}
+
+const (
+	RELEASED = "Released"
+	WANTED   = "Wanted"
+	HELD     = "Held"
 )
 
 func main() {
@@ -22,9 +39,11 @@ func main() {
 
 	p := &peer{
 		id:            ownPort,
+		lamportTime:   0,
 		amountOfPings: make(map[int32]int32),
-		clients:       make(map[int32]ping.PingClient),
+		clients:       make(map[int32]ping.NodeClient),
 		ctx:           ctx,
+		state:         RELEASED,
 	}
 
 	// Create listener tcp on port ownPort
@@ -33,7 +52,7 @@ func main() {
 		log.Fatalf("Failed to listen on port: %v", err)
 	}
 	grpcServer := grpc.NewServer()
-	ping.RegisterPingServer(grpcServer, p)
+	ping.RegisterNodeServer(grpcServer, p)
 
 	go func() {
 		if err := grpcServer.Serve(list); err != nil {
@@ -55,7 +74,7 @@ func main() {
 			log.Fatalf("Could not connect: %s", err)
 		}
 		defer conn.Close()
-		c := ping.NewPingClient(conn)
+		c := ping.NewNodeClient(conn)
 		p.clients[port] = c
 	}
 
@@ -65,17 +84,18 @@ func main() {
 	}
 }
 
-type peer struct {
-	ping.UnimplementedPingServer
-	id            int32
-	amountOfPings map[int32]int32
-	clients       map[int32]ping.PingClient
-	ctx           context.Context
-}
-
 func (p *peer) Ping(ctx context.Context, req *ping.Request) (*ping.Reply, error) {
 	id := req.Id
 	p.amountOfPings[id] += 1
+
+	rep := &ping.Reply{Amount: p.amountOfPings[id]}
+	return rep, nil
+}
+
+func (p *peer) CriticalSection(ctx context.Context, req *ping.Request) (*ping.Reply, error) {
+	id := req.Id
+	log.Printf("%v is in critical section", id)
+	time.Sleep(5 * time.Second)
 
 	rep := &ping.Reply{Amount: p.amountOfPings[id]}
 	return rep, nil
