@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math/rand"
 	"net"
 	"os"
 	"strconv"
@@ -16,12 +17,13 @@ import (
 
 type peer struct {
 	ping.UnimplementedNodeServer
-	id            int32
-	lamportTime   int32
-	amountOfPings map[int32]int32
-	clients       map[int32]ping.NodeClient
-	ctx           context.Context
-	state         string
+	id             int32
+	lamportTime    int32
+	responseNeeded int32
+	amountOfPings  map[int32]int32
+	clients        map[int32]ping.NodeClient
+	ctx            context.Context
+	state          string
 }
 
 const (
@@ -38,12 +40,13 @@ func main() {
 	defer cancel()
 
 	p := &peer{
-		id:            ownPort,
-		lamportTime:   0,
-		amountOfPings: make(map[int32]int32),
-		clients:       make(map[int32]ping.NodeClient),
-		ctx:           ctx,
-		state:         RELEASED,
+		id:             ownPort,
+		lamportTime:    0,
+		responseNeeded: 999,
+		amountOfPings:  make(map[int32]int32),
+		clients:        make(map[int32]ping.NodeClient),
+		ctx:            ctx,
+		state:          RELEASED,
 	}
 
 	// Create listener tcp on port ownPort
@@ -78,6 +81,14 @@ func main() {
 		p.clients[port] = c
 	}
 
+	//We need N-1 responses to enter the critical section
+	p.responseNeeded = int32(len(p.clients))
+
+	go func() {
+		randomPause(10)
+		p.CriticalSection(p.ctx, &ping.Request{Id: p.id})
+	}()
+
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		p.sendPingToAll()
@@ -94,15 +105,33 @@ func (p *peer) Broadcast(ctx context.Context, req *ping.Request) (*ping.Reply, e
 }
 
 func (p *peer) CriticalSection(ctx context.Context, req *ping.Request) (*ping.Reply, error) {
+	//WANTS TO ENTER
+	p.state = WANTED
+	requestsNeeded := len(p.clients)
+
+	if requestsNeeded == 0 {
+		p.TheSimulatedCriticalSection()
+	}
+
+	//CRITICAL RESOURCE:
+	time.Sleep(5 * time.Second)
 	log.Printf("%v is in critical section \n", req.Id)
-	p.state = HELD
 	time.Sleep(5 * time.Second)
 
-	p.Broadcast(p.ctx, &ping.Request{Id: p.id})
+	//EXITING CRITICAL SECTION
 	p.state = RELEASED
+	p.Broadcast(p.ctx, &ping.Request{Id: p.id})
 
 	rep := &ping.Reply{Amount: p.amountOfPings[req.Id]}
 	return rep, nil
+}
+
+func (p *peer) TheSimulatedCriticalSection() {
+	p.state = HELD
+	time.Sleep(5 * time.Second)
+	log.Printf("%v is in critical section \n", p.id)
+	time.Sleep(5 * time.Second)
+	p.responseNeeded = int32(len(p.clients))
 }
 
 func (p *peer) sendPingToAll() {
@@ -112,6 +141,17 @@ func (p *peer) sendPingToAll() {
 		if err != nil {
 			fmt.Println("something went wrong")
 		}
+		if userId != reply.Userid {
+			if message.LamportTime > lamportTime {
+				lamportTime = message.LamportTime + 1
+			} else {
+				lamportTime++
+			}
+		}
 		log.Printf("Got reply from id %v: %v\n", id, reply.Amount)
 	}
+}
+
+func randomPause(max int) {
+	time.Sleep(time.Millisecond * time.Duration(rand.Intn(max*40)))
 }
