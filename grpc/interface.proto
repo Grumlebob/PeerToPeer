@@ -11,11 +11,13 @@ service Node {
 message Request {
     int32 id = 1;
     string state = 2;
+    int32 lamportTime = 3;
 }
 
 message Reply {
     int32 id = 1;
     string state = 2;
+    int32 lamportTime = 3;
 }
 
 

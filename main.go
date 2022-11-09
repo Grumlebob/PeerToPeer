@@ -100,7 +100,7 @@ func (p *peer) Broadcast(ctx context.Context, req *ping.Request) (*ping.Reply, e
 	p.amountOfPings[id] += 1
 	log.Printf("Got ping from %v, with %s \n", id, p.state)
 
-	rep := &ping.Reply{Amount: p.amountOfPings[id]}
+	rep := &ping.Reply{Id: p.amountOfPings[id]}
 	return rep, nil
 }
 
@@ -122,7 +122,7 @@ func (p *peer) CriticalSection(ctx context.Context, req *ping.Request) (*ping.Re
 	p.state = RELEASED
 	p.Broadcast(p.ctx, &ping.Request{Id: p.id})
 
-	rep := &ping.Reply{Amount: p.amountOfPings[req.Id]}
+	rep := &ping.Reply{Id: p.amountOfPings[req.Id]}
 	return rep, nil
 }
 
@@ -141,8 +141,8 @@ func (p *peer) sendPingToAll() {
 		if err != nil {
 			fmt.Println("something went wrong")
 		}
-		if userId != reply.Userid {
-			if message.LamportTime > lamportTime {
+		if p.id != reply.Id {
+			if reply.lamportTime > lamportTime {
 				lamportTime = message.LamportTime + 1
 			} else {
 				lamportTime++
