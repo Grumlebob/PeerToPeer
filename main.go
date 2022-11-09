@@ -107,6 +107,7 @@ func (p *peer) HandlePeerRequest(ctx context.Context, req *node.Request) (*node.
 		}
 		if req.State == WANTED {
 			if req.LamportTime < p.lamportTime {
+				log.Printf("req: %v, against client %v \n", req.LamportTime, p.lamportTime)
 				p.responseNeeded--
 			} else if req.LamportTime == p.lamportTime && req.Id < p.id {
 				p.responseNeeded--
@@ -120,10 +121,10 @@ func (p *peer) HandlePeerRequest(ctx context.Context, req *node.Request) (*node.
 func (p *peer) RequestEnterToCriticalSection(ctx context.Context, req *node.Request) (*node.Reply, error) {
 	//P Requests to enter critical section, and sends a request to all other peers.
 	//WANTS TO ENTER
-	log.Printf("Requesting to enter critical section \n")
 	p.lamportTime++
 	p.state = WANTED
 	p.responseNeeded = int32(len(p.clients))
+	log.Printf("Request to enter critical section, with stamp %v \n", p.lamportTime)
 	p.sendMessageToAllPeers()
 	for p.responseNeeded > 0 {
 
@@ -137,9 +138,9 @@ func (p *peer) RequestEnterToCriticalSection(ctx context.Context, req *node.Requ
 }
 
 func (p *peer) TheSimulatedCriticalSection() {
+	log.Printf("%v is in critical section, with timestamp %v \n", p.id, p.lamportTime)
 	lamportTime++
 	p.state = HELD
-	log.Printf("%v is in critical section, with timestamp %v \n", p.id, p.lamportTime)
 	time.Sleep(4 * time.Second)
 	//EXITING CRITICAL SECTION
 	lamportTime++
