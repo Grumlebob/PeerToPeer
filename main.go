@@ -121,6 +121,9 @@ func (p *peer) HandlePeerRequest(ctx context.Context, req *node.Request) (*node.
 func (p *peer) RequestEnterToCriticalSection(ctx context.Context, req *node.Request) (*node.Reply, error) {
 	//P Requests to enter critical section, and sends a request to all other peers.
 	//WANTS TO ENTER
+	if p.state == WANTED || p.state == HELD {
+		return &node.Reply{Id: p.id, State: p.state, LamportTime: p.lamportTime}, nil
+	}
 	p.lamportTime++
 	p.state = WANTED
 	p.responseNeeded = int32(len(p.clients))
@@ -158,6 +161,7 @@ func (p *peer) sendMessageToAllPeers() {
 		if err != nil {
 			log.Println("something went wrong")
 		}
+
 		if reply.State == RELEASED {
 			p.responseNeeded--
 		}
