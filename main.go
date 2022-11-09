@@ -99,11 +99,9 @@ func (p *peer) HandlePeerRequest(ctx context.Context, req *node.Request) (*node.
 	//p er den client der svarer på requesten.
 	//req kommer fra anden peer.
 	//Reply er det svar peer får.
-	log.Printf("Peer %v received from peer %v, Timestamp: %v, State: %s, OwnState: \n", p.id, req.Id, req.LamportTime, req.State, p.state)
 	if p.state == WANTED {
 		if req.State == RELEASED {
 			p.responseNeeded--
-			log.Printf("Responses needed: %v \n", p.responseNeeded)
 		}
 		if req.State == WANTED {
 			if req.LamportTime > p.lamportTime {
@@ -127,7 +125,7 @@ func (p *peer) RequestEnterToCriticalSection(ctx context.Context, req *node.Requ
 	p.lamportTime++
 	p.state = WANTED
 	p.responseNeeded = int32(len(p.clients))
-	log.Printf("Request to enter critical section, with stamp %v \n", p.lamportTime)
+	log.Printf("%v requests entering CS. Timestamp: %v \n", p.id, p.lamportTime)
 	p.sendMessageToAllPeers()
 	for p.responseNeeded > 0 {
 		//It decrements in HandlePeerRequest method.
@@ -141,7 +139,7 @@ func (p *peer) RequestEnterToCriticalSection(ctx context.Context, req *node.Requ
 }
 
 func (p *peer) TheSimulatedCriticalSection() {
-	log.Printf("%v is in critical section, with timestamp %v \n", p.id, p.lamportTime)
+	log.Printf("%v in CS. Timestamp: %v \n", p.id, p.lamportTime)
 	p.lamportTime++
 	p.state = HELD
 	time.Sleep(3 * time.Second)
@@ -149,7 +147,7 @@ func (p *peer) TheSimulatedCriticalSection() {
 	p.lamportTime++
 	p.responseNeeded = int32(len(p.clients))
 	p.state = RELEASED
-	log.Printf("%v is out of the critical section \n", p.id)
+	log.Printf("%v out of CS. Timestamp: %v \n", p.id, p.lamportTime)
 	p.sendMessageToAllPeers()
 }
 
@@ -161,12 +159,9 @@ func (p *peer) sendMessageToAllPeers() {
 		if err != nil {
 			log.Println("something went wrong")
 		}
-
 		if reply.State == RELEASED {
 			p.responseNeeded--
 		}
-		//log.Printf("Reply: ID %v, State: %s, Lamport: %v, Responses needed: %v \n", reply.Id, reply.State, reply.LamportTime, p.responseNeeded)
-		//log.Printf("timestamp: %v \n", reply.LamportTime)
 	}
 }
 
