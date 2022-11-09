@@ -14,18 +14,17 @@ import (
 
 	node "github.com/Grumlebob/PeerToPeer/grpc"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
-
-var lamportTime = int32(0)
 
 type peer struct {
 	node.UnimplementedNodeServer
 	id             int32
 	lamportTime    int32
 	responseNeeded int32
+	state          string
 	clients        map[int32]node.NodeClient
 	ctx            context.Context
-	state          string
 }
 
 const (
@@ -40,11 +39,10 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
 	p := &peer{
 		id:             ownPort,
-		lamportTime:    lamportTime,
-		responseNeeded: 999999,
+		lamportTime:    0,
+		responseNeeded: 0,
 		clients:        make(map[int32]node.NodeClient),
 		ctx:            ctx,
 		state:          RELEASED,
@@ -66,14 +64,13 @@ func main() {
 
 	for i := 0; i < 3; i++ {
 		port := int32(5000) + int32(i)
-
 		if port == ownPort {
 			continue
 		}
 
 		var conn *grpc.ClientConn
 		fmt.Printf("Trying to dial: %v\n", port)
-		conn, err := grpc.Dial(fmt.Sprintf("localhost:%v", port), grpc.WithInsecure(), grpc.WithBlock())
+		conn, err := grpc.Dial(fmt.Sprintf("localhost:%v", port), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
 		if err != nil {
 			log.Fatalf("Could not connect: %s", err)
 		}
@@ -88,12 +85,13 @@ func main() {
 	//They all try to access the critical section after a random delay of 5 sec
 	go func() {
 		randomPause(5)
-		p.RequestEnterToCriticalSection(p.ctx, &node.Request{Id: p.id})
+		p.RequestEnterToCriticalSection(p.ctx, &node.Request{Id: p.id, State: p.state, LamportTime: p.lamportTime})
 	}()
 
 	scanner := bufio.NewScanner(os.Stdin)
+	//Enter to make client try to go into critical section
 	for scanner.Scan() {
-		p.sendMessageToAllPeers()
+		go p.RequestEnterToCriticalSection(p.ctx, &node.Request{Id: p.id, State: p.state, LamportTime: p.lamportTime})
 	}
 }
 
@@ -139,11 +137,11 @@ func (p *peer) RequestEnterToCriticalSection(ctx context.Context, req *node.Requ
 
 func (p *peer) TheSimulatedCriticalSection() {
 	log.Printf("%v is in critical section, with timestamp %v \n", p.id, p.lamportTime)
-	lamportTime++
+	p.lamportTime++
 	p.state = HELD
 	time.Sleep(4 * time.Second)
 	//EXITING CRITICAL SECTION
-	lamportTime++
+	p.lamportTime++
 	p.responseNeeded = int32(len(p.clients))
 	p.state = RELEASED
 	log.Printf("%v is out of the critical section \n", p.id)
@@ -151,7 +149,7 @@ func (p *peer) TheSimulatedCriticalSection() {
 }
 
 func (p *peer) sendMessageToAllPeers() {
-	lamportTime++
+	p.lamportTime++
 	request := &node.Request{Id: p.id, State: p.state, LamportTime: p.lamportTime}
 	for _, client := range p.clients {
 		_, err := client.HandlePeerRequest(p.ctx, request)
