@@ -84,30 +84,34 @@ func main() {
 	}
 }
 
-func (p *peer) Ping(ctx context.Context, req *ping.Request) (*ping.Reply, error) {
+func (p *peer) Broadcast(ctx context.Context, req *ping.Request) (*ping.Reply, error) {
 	id := req.Id
 	p.amountOfPings[id] += 1
+	log.Printf("Got ping from %v, with %s \n", id, p.state)
 
 	rep := &ping.Reply{Amount: p.amountOfPings[id]}
 	return rep, nil
 }
 
 func (p *peer) CriticalSection(ctx context.Context, req *ping.Request) (*ping.Reply, error) {
-	id := req.Id
-	log.Printf("%v is in critical section", id)
+	log.Printf("%v is in critical section \n", req.Id)
+	p.state = HELD
 	time.Sleep(5 * time.Second)
 
-	rep := &ping.Reply{Amount: p.amountOfPings[id]}
+	p.Broadcast(p.ctx, &ping.Request{Id: p.id})
+	p.state = RELEASED
+
+	rep := &ping.Reply{Amount: p.amountOfPings[req.Id]}
 	return rep, nil
 }
 
 func (p *peer) sendPingToAll() {
 	request := &ping.Request{Id: p.id}
 	for id, client := range p.clients {
-		reply, err := client.Ping(p.ctx, request)
+		reply, err := client.Broadcast(p.ctx, request)
 		if err != nil {
 			fmt.Println("something went wrong")
 		}
-		fmt.Printf("Got reply from id %v: %v\n", id, reply.Amount)
+		log.Printf("Got reply from id %v: %v\n", id, reply.Amount)
 	}
 }
