@@ -95,39 +95,39 @@ func main() {
 	}
 }
 
-func (p *peer) Broadcast(ctx context.Context, req *node.Request) (*node.Reply, error) {
-	//Dette er her "serveren/andre nodes" der svarer på en request(fra broadcast) og sender deres reply.
-	//P er den node der sender requesten
-
-	id := req.Id
+func (p *peer) HandlePeerRequest(ctx context.Context, req *node.Request) (*node.Reply, error) {
+	//Dette er her "serveren/andre nodes" der svarer på en request og sender deres reply.
+	//P er den node der SENDER requesten
+	//Metoden er den peer der skal sende reply.
+	log.Printf("Got ping from %v, with %s \n", p.id, p.state)
 	if p.state == WANTED {
 		if req.LamportTime > p.lamportTime {
 			p.responseNeeded--
 		}
 	} else if p.state == RELEASED {
-		p.state = WANTED
-		p.lamportTime = req.LamportTime + 1
-		p.responseNeeded = int32(len(p.clients))
+		//ÆNDRER.
+		p.RequestEnterToCriticalSection(ctx, req)
 	}
-
-	log.Printf("Got ping from %v, with %s \n", id, p.state)
 
 	rep := &node.Reply{Id: p.id}
 	return rep, nil
 }
 
 func (p *peer) RequestEnterToCriticalSection(ctx context.Context, req *node.Request) (*node.Reply, error) {
+	//P Requests to enter critical section, and sends a request to all other peers.
 	//WANTS TO ENTER
+	p.lamportTime++
 	p.state = WANTED
-	requestsNeeded := len(p.clients)
-	for requestsNeeded > 0 {
-		if requestsNeeded == 0 {
+	p.responseNeeded = int32(len(p.clients))
+	p.sendMessageToAllPeers()
+	for p.responseNeeded > 0 {
+		if p.responseNeeded == 0 {
 			p.TheSimulatedCriticalSection()
 			break
 		}
 	}
 	//Out of the critical section
-	reply := &node.Reply{Id: req.Id}
+	reply := &node.Reply{Id: p.id, State: p.state, LamportTime: p.lamportTime}
 	return reply, nil
 }
 
@@ -139,15 +139,15 @@ func (p *peer) TheSimulatedCriticalSection() {
 	//EXITING CRITICAL SECTION
 	p.responseNeeded = int32(len(p.clients))
 	p.state = RELEASED
+	log.Printf("%v is out of the critical section \n", p.id)
 	p.sendMessageToAllPeers()
 
 }
 
 func (p *peer) sendMessageToAllPeers() {
-	request := &node.Request{Id: p.id}
-
+	request := &node.Request{Id: p.id, State: p.state, LamportTime: p.lamportTime}
 	for id, client := range p.clients {
-		reply, err := client.Broadcast(p.ctx, request)
+		reply, err := client.HandlePeerRequest(p.ctx, request)
 		if err != nil {
 			log.Println("something went wrong")
 		}
@@ -163,5 +163,5 @@ func (p *peer) sendMessageToAllPeers() {
 }
 
 func randomPause(max int) {
-	time.Sleep(time.Millisecond * time.Duration(rand.Intn(max*60)))
+	time.Sleep(time.Millisecond * time.Duration(rand.Intn(max*1000)))
 }
