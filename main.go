@@ -97,10 +97,9 @@ func main() {
 }
 
 func (p *peer) HandlePeerRequest(ctx context.Context, req *node.Request) (*node.Reply, error) {
-	//P er den client der svarer på requesten.
-	//Req kommer fra anden peer.
+	//p er den client der svarer på requesten.
+	//req kommer fra anden peer.
 	//Reply er det svar peer får.
-	p.lamportTime = int32(math.Max(float64(p.lamportTime), float64(req.LamportTime))) + 1
 	if p.state == WANTED {
 		if req.State == RELEASED {
 			p.responseNeeded--
@@ -114,8 +113,9 @@ func (p *peer) HandlePeerRequest(ctx context.Context, req *node.Request) (*node.
 			}
 		}
 	}
-	rep := &node.Reply{Id: p.id, State: p.state, LamportTime: p.lamportTime}
-	return rep, nil
+	p.lamportTime = int32(math.Max(float64(p.lamportTime), float64(req.LamportTime))) + 1
+	reply := &node.Reply{Id: p.id, State: p.state, LamportTime: p.lamportTime}
+	return reply, nil
 }
 
 func (p *peer) RequestEnterToCriticalSection(ctx context.Context, req *node.Request) (*node.Reply, error) {
@@ -127,7 +127,7 @@ func (p *peer) RequestEnterToCriticalSection(ctx context.Context, req *node.Requ
 	log.Printf("Request to enter critical section, with stamp %v \n", p.lamportTime)
 	p.sendMessageToAllPeers()
 	for p.responseNeeded > 0 {
-
+		//It decrements in HandlePeerRequest method.
 	}
 	if p.responseNeeded == 0 {
 		p.TheSimulatedCriticalSection()
