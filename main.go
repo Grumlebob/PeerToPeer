@@ -149,19 +149,19 @@ func (p *peer) sendMessageToAllPeers() {
 				lamportTime++
 			}
 		}
+		log.Printf("Reply ID %v, State: %s, LamportTime: %v \n", reply.Id, reply.State, reply.LamportTime)
 		if p.state == WANTED {
-			if reply.LamportTime < p.lamportTime {
+			if reply.State == RELEASED {
 				p.responseNeeded--
-				//log.Printf("response needed: %v \n", p.responseNeeded)
 			}
-			if reply.LamportTime == p.lamportTime && reply.Id < p.id {
-				p.responseNeeded--
-				//log.Printf("response needed: %v \n", p.responseNeeded)
+			if reply.State == WANTED {
+				if reply.LamportTime > p.lamportTime {
+					p.responseNeeded--
+				} else if reply.LamportTime == p.lamportTime && reply.Id < p.id {
+					p.responseNeeded--
+				}
 			}
-		} else if p.state == RELEASED {
-			//logic mangler
 		}
-		//log.Printf("Got reply from id %v: should be same: %v \n ", id, reply.Id)
 	}
 }
 
