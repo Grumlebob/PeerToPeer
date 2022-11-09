@@ -22,8 +22,8 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type NodeClient interface {
-	Broadcast(ctx context.Context, in *Request, opts ...grpc.CallOption) (*Reply, error)
-	CriticalSection(ctx context.Context, in *Request, opts ...grpc.CallOption) (*Reply, error)
+	HandlePeerRequest(ctx context.Context, in *Request, opts ...grpc.CallOption) (*Reply, error)
+	RequestEnterToCriticalSection(ctx context.Context, in *Request, opts ...grpc.CallOption) (*Reply, error)
 }
 
 type nodeClient struct {
@@ -34,18 +34,18 @@ func NewNodeClient(cc grpc.ClientConnInterface) NodeClient {
 	return &nodeClient{cc}
 }
 
-func (c *nodeClient) Broadcast(ctx context.Context, in *Request, opts ...grpc.CallOption) (*Reply, error) {
+func (c *nodeClient) HandlePeerRequest(ctx context.Context, in *Request, opts ...grpc.CallOption) (*Reply, error) {
 	out := new(Reply)
-	err := c.cc.Invoke(ctx, "/grpc.Node/broadcast", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/grpc.Node/handlePeerRequest", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *nodeClient) CriticalSection(ctx context.Context, in *Request, opts ...grpc.CallOption) (*Reply, error) {
+func (c *nodeClient) RequestEnterToCriticalSection(ctx context.Context, in *Request, opts ...grpc.CallOption) (*Reply, error) {
 	out := new(Reply)
-	err := c.cc.Invoke(ctx, "/grpc.Node/criticalSection", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/grpc.Node/requestEnterToCriticalSection", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -56,8 +56,8 @@ func (c *nodeClient) CriticalSection(ctx context.Context, in *Request, opts ...g
 // All implementations must embed UnimplementedNodeServer
 // for forward compatibility
 type NodeServer interface {
-	Broadcast(context.Context, *Request) (*Reply, error)
-	CriticalSection(context.Context, *Request) (*Reply, error)
+	HandlePeerRequest(context.Context, *Request) (*Reply, error)
+	RequestEnterToCriticalSection(context.Context, *Request) (*Reply, error)
 	mustEmbedUnimplementedNodeServer()
 }
 
@@ -65,11 +65,11 @@ type NodeServer interface {
 type UnimplementedNodeServer struct {
 }
 
-func (UnimplementedNodeServer) Broadcast(context.Context, *Request) (*Reply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Broadcast not implemented")
+func (UnimplementedNodeServer) HandlePeerRequest(context.Context, *Request) (*Reply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method HandlePeerRequest not implemented")
 }
-func (UnimplementedNodeServer) CriticalSection(context.Context, *Request) (*Reply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CriticalSection not implemented")
+func (UnimplementedNodeServer) RequestEnterToCriticalSection(context.Context, *Request) (*Reply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RequestEnterToCriticalSection not implemented")
 }
 func (UnimplementedNodeServer) mustEmbedUnimplementedNodeServer() {}
 
@@ -84,38 +84,38 @@ func RegisterNodeServer(s grpc.ServiceRegistrar, srv NodeServer) {
 	s.RegisterService(&Node_ServiceDesc, srv)
 }
 
-func _Node_Broadcast_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Node_HandlePeerRequest_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(Request)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(NodeServer).Broadcast(ctx, in)
+		return srv.(NodeServer).HandlePeerRequest(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/grpc.Node/broadcast",
+		FullMethod: "/grpc.Node/handlePeerRequest",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(NodeServer).Broadcast(ctx, req.(*Request))
+		return srv.(NodeServer).HandlePeerRequest(ctx, req.(*Request))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Node_CriticalSection_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Node_RequestEnterToCriticalSection_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(Request)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(NodeServer).CriticalSection(ctx, in)
+		return srv.(NodeServer).RequestEnterToCriticalSection(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/grpc.Node/criticalSection",
+		FullMethod: "/grpc.Node/requestEnterToCriticalSection",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(NodeServer).CriticalSection(ctx, req.(*Request))
+		return srv.(NodeServer).RequestEnterToCriticalSection(ctx, req.(*Request))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -128,12 +128,12 @@ var Node_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*NodeServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "broadcast",
-			Handler:    _Node_Broadcast_Handler,
+			MethodName: "handlePeerRequest",
+			Handler:    _Node_HandlePeerRequest_Handler,
 		},
 		{
-			MethodName: "criticalSection",
-			Handler:    _Node_CriticalSection_Handler,
+			MethodName: "requestEnterToCriticalSection",
+			Handler:    _Node_RequestEnterToCriticalSection_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
