@@ -85,7 +85,7 @@ func main() {
 	p.responseNeeded = int32(len(p.clients))
 
 	go func() {
-		randomPause(10)
+		randomPause(5)
 		p.RequestEnterToCriticalSection(p.ctx, &node.Request{Id: p.id})
 	}()
 
@@ -107,6 +107,7 @@ func (p *peer) HandlePeerRequest(ctx context.Context, req *node.Request) (*node.
 func (p *peer) RequestEnterToCriticalSection(ctx context.Context, req *node.Request) (*node.Reply, error) {
 	//P Requests to enter critical section, and sends a request to all other peers.
 	//WANTS TO ENTER
+	log.Printf("Requesting to enter critical section \n")
 	p.lamportTime++
 	p.state = WANTED
 	p.responseNeeded = int32(len(p.clients))
@@ -129,11 +130,11 @@ func (p *peer) TheSimulatedCriticalSection() {
 	log.Printf("%v is in critical section \n", p.id)
 	time.Sleep(5 * time.Second)
 	//EXITING CRITICAL SECTION
+	lamportTime++
 	p.responseNeeded = int32(len(p.clients))
 	p.state = RELEASED
 	log.Printf("%v is out of the critical section \n", p.id)
 	p.sendMessageToAllPeers()
-
 }
 
 func (p *peer) sendMessageToAllPeers() {
