@@ -99,8 +99,7 @@ func (p *peer) HandlePeerRequest(ctx context.Context, req *node.Request) (*node.
 	//Dette er her "serveren/andre nodes" der svarer på en request og sender deres reply.
 	//P er den node der SENDER requesten
 	//Metoden er den peer der skal sende reply.
-	log.Printf("Got ping from %v, with %s \n", p.id, p.state)
-
+	//log.Printf("Got ping from %v, with %s \n", p.id, p.state)
 	rep := &node.Reply{Id: p.id}
 	return rep, nil
 }
@@ -113,10 +112,10 @@ func (p *peer) RequestEnterToCriticalSection(ctx context.Context, req *node.Requ
 	p.responseNeeded = int32(len(p.clients))
 	p.sendMessageToAllPeers()
 	for p.responseNeeded > 0 {
-		if p.responseNeeded == 0 {
-			p.TheSimulatedCriticalSection()
-			break
-		}
+
+	}
+	if p.responseNeeded == 0 {
+		p.TheSimulatedCriticalSection()
 	}
 	//Out of the critical section
 	reply := &node.Reply{Id: p.id, State: p.state, LamportTime: p.lamportTime}
@@ -138,7 +137,7 @@ func (p *peer) TheSimulatedCriticalSection() {
 
 func (p *peer) sendMessageToAllPeers() {
 	request := &node.Request{Id: p.id, State: p.state, LamportTime: p.lamportTime}
-	for id, client := range p.clients {
+	for _, client := range p.clients {
 		reply, err := client.HandlePeerRequest(p.ctx, request)
 		if err != nil {
 			log.Println("something went wrong")
@@ -153,16 +152,16 @@ func (p *peer) sendMessageToAllPeers() {
 		if p.state == WANTED {
 			if reply.LamportTime < p.lamportTime {
 				p.responseNeeded--
-				log.Printf("response needed: %v \n", p.responseNeeded)
+				//log.Printf("response needed: %v \n", p.responseNeeded)
 			}
 			if reply.LamportTime == p.lamportTime && reply.Id < p.id {
 				p.responseNeeded--
-				log.Printf("response needed: %v \n", p.responseNeeded)
+				//log.Printf("response needed: %v \n", p.responseNeeded)
 			}
 		} else if p.state == RELEASED {
 			//logic mangler
 		}
-		log.Printf("Got reply from id %v: should be same: %v \n ", id, reply.Id)
+		//log.Printf("Got reply from id %v: should be same: %v \n ", id, reply.Id)
 	}
 }
 
