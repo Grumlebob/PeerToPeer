@@ -100,7 +100,7 @@ func (p *peer) HandlePeerRequest(ctx context.Context, req *node.Request) (*node.
 	//P er den node der SENDER requesten
 	//Metoden er den peer der skal sende reply.
 	//log.Printf("Got ping from %v, with %s \n", p.id, p.state)
-	rep := &node.Reply{Id: p.id}
+	rep := &node.Reply{Id: p.id, State: p.state, LamportTime: p.lamportTime}
 	return rep, nil
 }
 
@@ -123,6 +123,7 @@ func (p *peer) RequestEnterToCriticalSection(ctx context.Context, req *node.Requ
 }
 
 func (p *peer) TheSimulatedCriticalSection() {
+	lamportTime++
 	p.state = HELD
 	time.Sleep(5 * time.Second)
 	log.Printf("%v is in critical section \n", p.id)
@@ -136,6 +137,7 @@ func (p *peer) TheSimulatedCriticalSection() {
 }
 
 func (p *peer) sendMessageToAllPeers() {
+	lamportTime++
 	request := &node.Request{Id: p.id, State: p.state, LamportTime: p.lamportTime}
 	for _, client := range p.clients {
 		reply, err := client.HandlePeerRequest(p.ctx, request)
