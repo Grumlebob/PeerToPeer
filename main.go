@@ -100,14 +100,6 @@ func (p *peer) HandlePeerRequest(ctx context.Context, req *node.Request) (*node.
 	//P er den node der SENDER requesten
 	//Metoden er den peer der skal sende reply.
 	log.Printf("Got ping from %v, with %s \n", p.id, p.state)
-	if p.state == WANTED {
-		if req.LamportTime > p.lamportTime {
-			p.responseNeeded--
-		}
-	} else if p.state == RELEASED {
-		//ÆNDRER.
-		p.RequestEnterToCriticalSection(ctx, req)
-	}
 
 	rep := &node.Reply{Id: p.id}
 	return rep, nil
@@ -157,6 +149,18 @@ func (p *peer) sendMessageToAllPeers() {
 			} else {
 				lamportTime++
 			}
+		}
+		if p.state == WANTED {
+			if reply.LamportTime < p.lamportTime {
+				p.responseNeeded--
+				log.Printf("response needed: %v \n", p.responseNeeded)
+			}
+			if reply.LamportTime == p.lamportTime && reply.Id < p.id {
+				p.responseNeeded--
+				log.Printf("response needed: %v \n", p.responseNeeded)
+			}
+		} else if p.state == RELEASED {
+			//logic mangler
 		}
 		log.Printf("Got reply from id %v: should be same: %v \n ", id, reply.Id)
 	}
