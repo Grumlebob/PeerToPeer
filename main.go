@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math"
 	"math/rand"
 	"net"
 	"os"
@@ -96,10 +97,22 @@ func main() {
 }
 
 func (p *peer) HandlePeerRequest(ctx context.Context, req *node.Request) (*node.Reply, error) {
-	//Dette er her "serveren/andre nodes" der svarer på en request og sender deres reply.
-	//P er den node der SENDER requesten
-	//Metoden er den peer der skal sende reply.
-	//log.Printf("Got ping from %v, with %s \n", p.id, p.state)
+	//P er den client der svarer på requesten.
+	//Req kommer fra anden peer.
+	//Reply er det svar peer får.
+	p.lamportTime = int32(math.Max(float64(p.lamportTime), float64(req.LamportTime))) + 1
+	if p.state == WANTED {
+		if req.State == RELEASED {
+			p.responseNeeded--
+		}
+		if req.State == WANTED {
+			if req.LamportTime > p.lamportTime {
+				p.responseNeeded--
+			} else if req.LamportTime == p.lamportTime && req.Id < p.id {
+				p.responseNeeded--
+			}
+		}
+	}
 	rep := &node.Reply{Id: p.id, State: p.state, LamportTime: p.lamportTime}
 	return rep, nil
 }
@@ -144,25 +157,6 @@ func (p *peer) sendMessageToAllPeers() {
 		reply, err := client.HandlePeerRequest(p.ctx, request)
 		if err != nil {
 			log.Println("something went wrong")
-		}
-		if p.id != reply.Id {
-			if reply.LamportTime > lamportTime {
-				lamportTime = reply.LamportTime + 1
-			} else {
-				lamportTime++
-			}
-		}
-		if p.state == WANTED {
-			if reply.State == RELEASED {
-				p.responseNeeded--
-			}
-			if reply.State == WANTED || reply.State == HELD {
-				if reply.LamportTime > p.lamportTime {
-					p.responseNeeded--
-				} else if reply.LamportTime == p.lamportTime && reply.Id < p.id {
-					p.responseNeeded--
-				}
-			}
 		}
 		log.Printf("Reply ID %v, State: %s, LamportTime: %v, ResponseNeeded: %v \n", reply.Id, reply.State, reply.LamportTime, p.responseNeeded)
 	}
