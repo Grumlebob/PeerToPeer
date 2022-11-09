@@ -100,14 +100,7 @@ func (p *peer) HandlePeerRequest(ctx context.Context, req *node.Request) (*node.
 	//P er den client der svarer på requesten.
 	//Req kommer fra anden peer.
 	//Reply er det svar peer får.
-	//p.lamportTime = int32(math.Max(float64(p.lamportTime), float64(req.LamportTime))) + 1
-	if p.id != req.Id {
-		if req.LamportTime > lamportTime {
-			lamportTime = req.LamportTime + 1
-		} else {
-			lamportTime++
-		}
-	}
+	p.lamportTime = int32(math.Max(float64(p.lamportTime), float64(req.LamportTime))) + 1
 	if p.state == WANTED {
 		if req.State == RELEASED {
 			p.responseNeeded--
