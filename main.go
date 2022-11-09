@@ -82,9 +82,9 @@ func main() {
 	//We need N-1 responses to enter the critical section
 	p.responseNeeded = int32(len(p.clients))
 
-	//They all try to access the critical section after a random delay of 5 sec
+	//They all try to access the critical section after a random delay of 4 sec
 	go func() {
-		randomPause(5)
+		randomPause(4)
 		p.RequestEnterToCriticalSection(p.ctx, &node.Request{Id: p.id, State: p.state, LamportTime: p.lamportTime})
 	}()
 
@@ -99,9 +99,11 @@ func (p *peer) HandlePeerRequest(ctx context.Context, req *node.Request) (*node.
 	//p er den client der svarer på requesten.
 	//req kommer fra anden peer.
 	//Reply er det svar peer får.
+	log.Printf("Peer %v received from peer %v, Timestamp: %v, State: %s, OwnState: \n", p.id, req.Id, req.LamportTime, req.State, p.state)
 	if p.state == WANTED {
 		if req.State == RELEASED {
 			p.responseNeeded--
+			log.Printf("Responses needed: %v \n", p.responseNeeded)
 		}
 		if req.State == WANTED {
 			if req.LamportTime > p.lamportTime {
@@ -139,7 +141,7 @@ func (p *peer) TheSimulatedCriticalSection() {
 	log.Printf("%v is in critical section, with timestamp %v \n", p.id, p.lamportTime)
 	p.lamportTime++
 	p.state = HELD
-	time.Sleep(4 * time.Second)
+	time.Sleep(3 * time.Second)
 	//EXITING CRITICAL SECTION
 	p.lamportTime++
 	p.responseNeeded = int32(len(p.clients))
@@ -152,9 +154,12 @@ func (p *peer) sendMessageToAllPeers() {
 	p.lamportTime++
 	request := &node.Request{Id: p.id, State: p.state, LamportTime: p.lamportTime}
 	for _, client := range p.clients {
-		_, err := client.HandlePeerRequest(p.ctx, request)
+		reply, err := client.HandlePeerRequest(p.ctx, request)
 		if err != nil {
 			log.Println("something went wrong")
+		}
+		if reply.State == RELEASED {
+			p.responseNeeded--
 		}
 		//log.Printf("Reply: ID %v, State: %s, Lamport: %v, Responses needed: %v \n", reply.Id, reply.State, reply.LamportTime, p.responseNeeded)
 		//log.Printf("timestamp: %v \n", reply.LamportTime)
