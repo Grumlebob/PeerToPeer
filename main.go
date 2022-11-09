@@ -139,9 +139,8 @@ func (p *peer) RequestEnterToCriticalSection(ctx context.Context, req *node.Requ
 func (p *peer) TheSimulatedCriticalSection() {
 	lamportTime++
 	p.state = HELD
-	time.Sleep(5 * time.Second)
 	log.Printf("%v is in critical section \n", p.id)
-	time.Sleep(5 * time.Second)
+	time.Sleep(4 * time.Second)
 	//EXITING CRITICAL SECTION
 	lamportTime++
 	p.responseNeeded = int32(len(p.clients))
@@ -158,7 +157,8 @@ func (p *peer) sendMessageToAllPeers() {
 		if err != nil {
 			log.Println("something went wrong")
 		}
-		log.Printf("Reply ID %v, State: %s, LamportTime: %v, ResponseNeeded: %v \n", reply.Id, reply.State, reply.LamportTime, p.responseNeeded)
+		//log.Printf("Reply: ID %v, State: %s, Lamport: %v, Responses needed: %v \n", reply.Id, reply.State, reply.LamportTime, p.responseNeeded)
+		log.Printf("timestamp: %v \n", reply.LamportTime)
 	}
 }
 
