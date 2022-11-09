@@ -15,6 +15,8 @@ import (
 	"google.golang.org/grpc"
 )
 
+var lamportTime = int32(0)
+
 type peer struct {
 	ping.UnimplementedNodeServer
 	id             int32
@@ -41,7 +43,7 @@ func main() {
 
 	p := &peer{
 		id:             ownPort,
-		lamportTime:    0,
+		lamportTime:    lamportTime,
 		responseNeeded: 999,
 		amountOfPings:  make(map[int32]int32),
 		clients:        make(map[int32]ping.NodeClient),
@@ -143,7 +145,7 @@ func (p *peer) sendPingToAll() {
 		}
 		if p.id != reply.Id {
 			if reply.lamportTime > lamportTime {
-				lamportTime = message.LamportTime + 1
+				lamportTime = reply.LamportTime + 1
 			} else {
 				lamportTime++
 			}
