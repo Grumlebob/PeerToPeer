@@ -106,7 +106,7 @@ func (p *peer) HandlePeerRequest(ctx context.Context, req *node.Request) (*node.
 			p.responseNeeded--
 		}
 		if req.State == WANTED {
-			if req.LamportTime > p.lamportTime {
+			if req.LamportTime < p.lamportTime {
 				p.responseNeeded--
 			} else if req.LamportTime == p.lamportTime && req.Id < p.id {
 				p.responseNeeded--
